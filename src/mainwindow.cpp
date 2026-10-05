@@ -335,6 +335,7 @@ void MainWindow::initAppearance()
 {
     qApp->installTranslator(&m_translator);
     createLanguageMenu();
+    createThemeMenu();
 
     // Load saved application style/theme.
     const QString savedStyle = settings.value("ui/applicationStyle", "").toString();
@@ -374,28 +375,50 @@ void MainWindow::initAppearance()
 
 void MainWindow::applyCurrentTheme()
 {
+    const int themeMode = settings.value("ui/themeMode", 0).toInt();
     const bool nativeStyling = settings.value("ui/nativeStyling", true).toBool();
 
-    // In native mode the dark/light decision must follow the active style's
-    // palette (e.g. choosing the "adwaita-dark" style), so the app's content
-    // colors match what the style actually paints. In the bundled (non-native)
-    // theme we follow the desktop's color scheme instead.
-    bool dark;
-    if (nativeStyling)
+    ThemeManager::Theme chosenTheme = ThemeManager::Light;
+    bool effectiveNative = false;
+
+    if (themeMode == 0) // Auto
     {
-        const QPalette pal = QApplication::style()->standardPalette();
-        dark = pal.color(QPalette::Window).lightness() < 128;
+        bool dark;
+        if (nativeStyling)
+        {
+            const QPalette pal = QApplication::style()->standardPalette();
+            dark = pal.color(QPalette::Window).lightness() < 128;
+            effectiveNative = true;
+        }
+        else
+        {
+            dark = isDarkMode();
+            effectiveNative = false;
+        }
+        chosenTheme = dark ? ThemeManager::Dark : ThemeManager::Light;
     }
-    else
+    else if (themeMode == 1) // Light
     {
-        dark = isDarkMode();
+        chosenTheme = ThemeManager::Light;
+        effectiveNative = false;
+    }
+    else if (themeMode == 2) // Dark
+    {
+        chosenTheme = ThemeManager::Dark;
+        effectiveNative = false;
+    }
+    else if (themeMode == 3) // Dark High Contrast
+    {
+        chosenTheme = ThemeManager::DarkHighContrast;
+        effectiveNative = false;
     }
 
-    ThemeManager::instance().applyTheme(dark ? ThemeManager::Dark : ThemeManager::Light,
-                                        nativeStyling);
+    ThemeManager::instance().applyTheme(chosenTheme, effectiveNative);
 
+    applyControlButtonStyles();
     applyTabBackgrounds();
     applyActionIcons();
+    syncThemeActionGroup();
 }
 
 void MainWindow::applyTabBackgrounds()
@@ -465,19 +488,23 @@ void MainWindow::applyControlButtonStyles()
 {
     // Start/Stop accent colors are applied per-widget (not via the global stylesheet)
     // so they survive native styling, where the global stylesheet is empty.
+    const bool hc = ThemeManager::instance().isHighContrast();
+    const QString startBorder = hc ? " border: 2px solid #66bb6a;" : " border: none;";
+    const QString stopBorder  = hc ? " border: 2px solid #ef5350;" : " border: none;";
+
     ui->btnStartMeasurement->setStyleSheet(
-        "QPushButton { background-color: #2e7d32; color: white; border: none;"
+        QString("QPushButton { background-color: #2e7d32; color: white;%1"
         " border-radius: 12px; padding: 5px 15px; font-weight: bold; }"
         "QPushButton:hover { background-color: #388e3c; }"
         "QPushButton:pressed { background-color: #1b5e20; }"
-        "QPushButton:disabled { background-color: #88b98a; }");
+        "QPushButton:disabled { background-color: #555555; color: #888888; }").arg(startBorder));
 
     ui->btnStopMeasurement->setStyleSheet(
-        "QPushButton { background-color: #c62828; color: white; border: none;"
+        QString("QPushButton { background-color: #c62828; color: white;%1"
         " border-radius: 12px; padding: 5px 15px; font-weight: bold; }"
         "QPushButton:hover { background-color: #d32f2f; }"
         "QPushButton:pressed { background-color: #8e1c1c; }"
-        "QPushButton:disabled { background-color: #d99a9a; }");
+        "QPushButton:disabled { background-color: #555555; color: #888888; }").arg(stopBorder));
 }
 
 void MainWindow::addToRecentFiles(const QString &filename)
@@ -1619,6 +1646,57 @@ void MainWindow::createLanguageMenu()
     }
 }
 
+void MainWindow::createThemeMenu()
+{
+    auto *themeMenu = new QMenu(tr("&Theme"), this);
+    m_themeActionGroup = new QActionGroup(this);
+
+    struct ThemeEntry { const char *label; int mode; };
+    static constexpr ThemeEntry entries[] = {
+        { QT_TR_NOOP("Auto (System)"), 0 },
+        { QT_TR_NOOP("Light"), 1 },
+        { QT_TR_NOOP("Dark"), 2 },
+        { QT_TR_NOOP("Dark High Contrast"), 3 },
+    };
+
+    const int savedMode = settings.value("ui/themeMode", 0).toInt();
+
+    for (const auto &entry : entries)
+    {
+        auto *action = new QAction(tr(entry.label), this);
+        action->setCheckable(true);
+        action->setData(entry.mode);
+        m_themeActionGroup->addAction(action);
+        themeMenu->addAction(action);
+
+        if (entry.mode == savedMode)
+            action->setChecked(true);
+    }
+
+    connect(m_themeActionGroup, &QActionGroup::triggered, this, [this](QAction *act) {
+        const int mode = act->data().toInt();
+        settings.setValue("ui/themeMode", mode);
+        applyCurrentTheme();
+    });
+
+    ui->menuWindow->addMenu(themeMenu);
+}
+
+void MainWindow::syncThemeActionGroup()
+{
+    if (!m_themeActionGroup)
+        return;
+    const int currentMode = settings.value("ui/themeMode", 0).toInt();
+    for (QAction *action : m_themeActionGroup->actions())
+    {
+        if (action->data().toInt() == currentMode)
+        {
+            action->setChecked(true);
+            break;
+        }
+    }
+}
+
 void MainWindow::exportFullTrace()
 {
     QMessageBox::information(this, tr("Not Implemented"),
@@ -1638,7 +1716,13 @@ void MainWindow::showSettingsDialog()
     if (dlg.exec() != QDialog::Accepted)
         return;
 
-    // Apply theme.
+    // Apply theme mode.
+    const int newThemeMode = dlg.selectedThemeMode();
+    const int oldThemeMode = settings.value("ui/themeMode", 0).toInt();
+    const bool themeModeChanged = (newThemeMode != oldThemeMode);
+    settings.setValue("ui/themeMode", newThemeMode);
+
+    // Apply theme (style).
     const QString newTheme = dlg.selectedTheme();
     const QString currentTheme = QApplication::style()->objectName();
     const bool styleChanged = newTheme.compare(currentTheme, Qt::CaseInsensitive) != 0;
@@ -1653,7 +1737,7 @@ void MainWindow::showSettingsDialog()
     }
     settings.setValue("ui/nativeStyling", newNativeStyling);
 
-    if (styleChanged || nativeStylingChanged)
+    if (styleChanged || nativeStylingChanged || themeModeChanged)
         applyCurrentTheme();
 
     // Apply language.

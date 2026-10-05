@@ -321,7 +321,7 @@ bool SignalSelectorDialog::shouldShowItem(QTreeWidgetItem *item, const QString &
 
 void SignalSelectorDialog::applyTheme(ThemeManager::Theme theme)
 {
-    bool isDark = (theme == ThemeManager::Dark);
+    bool isDark = (theme == ThemeManager::Dark || theme == ThemeManager::DarkHighContrast);
 
     // Revert dialog-level background styling to keep original view
     this->setStyleSheet("");

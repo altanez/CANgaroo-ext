@@ -94,6 +94,25 @@ void ThemeManager::updateColors(Theme theme)
         _colors.graphGrid = QColor(230, 230, 230);
         _colors.graphAxisText = Qt::black;
         _colors.graphCursor = Qt::black;
+    } else if (theme == DarkHighContrast) {
+        _colors.window = QColor(20, 20, 20);
+        _colors.windowText = Qt::white;
+        _colors.base = QColor(0, 0, 0);
+        _colors.alternateBase = QColor(24, 24, 24);
+        _colors.toolTipBase = Qt::black;
+        _colors.toolTipText = QColor(255, 255, 0);
+        _colors.text = Qt::white;
+        _colors.button = QColor(36, 36, 36);
+        _colors.buttonText = Qt::white;
+        _colors.brightText = Qt::white;
+        _colors.link = QColor(56, 189, 248);
+        _colors.highlight = QColor(0, 95, 184);
+        _colors.highlightedText = Qt::white;
+        
+        _colors.graphBackground = QColor(10, 10, 10);
+        _colors.graphGrid = QColor(64, 64, 64);
+        _colors.graphAxisText = Qt::white;
+        _colors.graphCursor = QColor(255, 255, 0);
     } else {
         _colors.window = QColor(45, 45, 48);
         _colors.windowText = QColor(220, 220, 220);
@@ -137,9 +156,10 @@ void ThemeManager::applyPalette(Theme theme)
         darkPalette.setColor(QPalette::HighlightedText, _colors.highlightedText);
         
         // Disabled colors
-        darkPalette.setColor(QPalette::Disabled, QPalette::WindowText, QColor(127, 127, 127));
-        darkPalette.setColor(QPalette::Disabled, QPalette::Text, QColor(127, 127, 127));
-        darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, QColor(127, 127, 127));
+        const QColor disabledText = (theme == DarkHighContrast) ? QColor(140, 140, 140) : QColor(127, 127, 127);
+        darkPalette.setColor(QPalette::Disabled, QPalette::WindowText, disabledText);
+        darkPalette.setColor(QPalette::Disabled, QPalette::Text, disabledText);
+        darkPalette.setColor(QPalette::Disabled, QPalette::ButtonText, disabledText);
         
         qApp->setPalette(darkPalette);
     }
@@ -147,7 +167,15 @@ void ThemeManager::applyPalette(Theme theme)
 
 void ThemeManager::applyStyleSheet(Theme theme)
 {
-    QString qssPath = (theme == Light) ? ":/assets/light_theme.qss" : ":/assets/dark_theme.qss";
+    QString qssPath;
+    if (theme == Light) {
+        qssPath = ":/assets/light_theme.qss";
+    } else if (theme == DarkHighContrast) {
+        qssPath = ":/assets/dark_high_contrast.qss";
+    } else {
+        qssPath = ":/assets/dark_theme.qss";
+    }
+
     QFile file(qssPath);
     if (file.open(QFile::ReadOnly)) {
         QString styleSheet = QLatin1String(file.readAll());

@@ -817,11 +817,13 @@ void GraphWindow::onMouseMove(QMouseEvent *event)
     QString timeStr = dt.toString("yyyy-MM-dd HH:mm:ss.zzz t");
 
     const bool darkTip = ThemeManager::instance().isDarkMode();
-    const QString tipBg = darkTip ? "#2d2d30" : "#ffffff";
-    const QString tipFg = darkTip ? "#dcdcdc" : "#000000";
-    QString html = QString("<div style='font-family: Arial; font-size: 11px; padding: 5px; "
-                           "background: %1; color: %2;'>"
-                           "<b>%3</b><br/><br/>").arg(tipBg, tipFg, timeStr);
+    const bool hcTip = ThemeManager::instance().isHighContrast();
+    const QString tipBg = hcTip ? "#000000" : (darkTip ? "#2d2d30" : "#ffffff");
+    const QString tipFg = hcTip ? "#ffffff" : (darkTip ? "#dcdcdc" : "#000000");
+    const QString tipBorder = hcTip ? "border: 1px solid #ffff00; " : "";
+    QString html = QString("<div style='font-family: Arial; font-size: 11px; padding: 5px; %1"
+                           "background: %2; color: %3;'>"
+                           "<b>%4</b><br/><br/>").arg(tipBorder, tipBg, tipFg, timeStr);
 
     bool foundAny = false;
 

@@ -340,6 +340,7 @@ QVariant AggregatedTraceViewModel::data_TextColorRole(const QModelIndex &index, 
 {
     (void) role;
     bool isDark = ThemeManager::instance().isDarkMode();
+    bool isHC = ThemeManager::instance().isHighContrast();
 
     AggregatedTraceViewItem *item = static_cast<AggregatedTraceViewItem *>(index.internalPointer());
     if (!item) { return QVariant(); }
@@ -365,7 +366,7 @@ QVariant AggregatedTraceViewModel::data_TextColorRole(const QModelIndex &index, 
     }
 
     QColor color = msg.isErrorFrame()
-        ? (isDark ? QColor(255, 100, 100) : QColor(Qt::red))
+        ? (isHC ? QColor(255, 60, 60) : (isDark ? QColor(255, 100, 100) : QColor(Qt::red)))
         : ThemeManager::instance().colors().text;
 
     color.setAlpha(alpha);

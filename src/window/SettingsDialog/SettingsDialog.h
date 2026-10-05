@@ -34,6 +34,7 @@ class SettingsDialog : public QDialog
 public:
     explicit SettingsDialog(QSettings &settings, QActionGroup *languageGroup, QWidget *parent = nullptr);
 
+    int selectedThemeMode() const;
     QString selectedTheme() const;
     bool nativeStylingEnabled() const;
     QString selectedLanguage() const;
@@ -49,6 +50,7 @@ public:
     int maxTraceSize() const;
 
 private:
+    QComboBox *m_themeModeCombo;
     QComboBox *m_themeCombo;
     QComboBox *m_languageCombo;
     QComboBox *m_saveFormatCombo;

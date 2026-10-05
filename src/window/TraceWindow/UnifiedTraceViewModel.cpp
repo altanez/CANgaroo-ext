@@ -565,21 +565,22 @@ QVariant UnifiedTraceViewModel::data_TextColorRole(const QModelIndex &index, [[m
 {
     UnifiedTraceItem *item = static_cast<UnifiedTraceItem*>(index.internalPointer());
     bool isDark = ThemeManager::instance().isDarkMode();
+    bool isHC = ThemeManager::instance().isHighContrast();
 
     if (item->isProtocol()) {
         const ProtocolMessage& pmsg = item->protocolMessage();
         switch (pmsg.type) {
             case MessageType::Request:
-                return isDark ? QColor(100, 180, 255) : QColor(0, 0, 139);
+                return isHC ? QColor(80, 200, 255) : (isDark ? QColor(100, 180, 255) : QColor(0, 0, 139));
             case MessageType::PositiveResponse:
-                return isDark ? QColor(120, 255, 120) : QColor(0, 100, 0);
+                return isHC ? QColor(0, 255, 128) : (isDark ? QColor(120, 255, 120) : QColor(0, 100, 0));
             case MessageType::NegativeResponse:
-                return isDark ? QColor(255, 120, 120) : QColor(139, 0, 0);
+                return isHC ? QColor(255, 80, 80) : (isDark ? QColor(255, 120, 120) : QColor(139, 0, 0));
             default: break;
         }
     }
     const BusMessage& msg = item->rawFrame();
-    if (msg.isErrorFrame()) return isDark ? QColor(255, 100, 100) : QColor(Qt::red);
+    if (msg.isErrorFrame()) return isHC ? QColor(255, 60, 60) : (isDark ? QColor(255, 100, 100) : QColor(Qt::red));
     return QVariant();
 }
 

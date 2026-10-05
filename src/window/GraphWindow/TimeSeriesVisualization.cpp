@@ -468,7 +468,7 @@ void TimeSeriesVisualization::applyTheme(ThemeManager::Theme theme)
     _tooltipBox->setPen(QPen(colors.toolTipText, 1));
     _tooltipText->setDefaultTextColor(colors.toolTipText);
 
-    if (theme == ThemeManager::Dark) {
+    if (theme == ThemeManager::Dark || theme == ThemeManager::DarkHighContrast) {
         _chart->setTheme(QChart::ChartThemeDark);
     } else {
         _chart->setTheme(QChart::ChartThemeLight);

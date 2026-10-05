@@ -54,7 +54,8 @@ class ThemeManager : public QObject
 public:
     enum Theme {
         Light,
-        Dark
+        Dark,
+        DarkHighContrast
     };
 
     static ThemeManager& instance();
@@ -64,7 +65,8 @@ public:
     void applyTheme(Theme theme, bool nativeStyling = false);
     Theme currentTheme() const { return _currentTheme; }
     bool nativeStyling() const { return _nativeStyling; }
-    bool isDarkMode() const { return _currentTheme == Dark; }
+    bool isDarkMode() const { return _currentTheme == Dark || _currentTheme == DarkHighContrast; }
+    bool isHighContrast() const { return _currentTheme == DarkHighContrast; }
     
     const ThemeColors& colors() const { return _colors; }
 

@@ -339,7 +339,7 @@ void ConditionalLoggingDialog::onAccept()
 }
 void ConditionalLoggingDialog::applyTheme(ThemeManager::Theme theme)
 {
-    bool isDark = (theme == ThemeManager::Dark);
+    bool isDark = (theme == ThemeManager::Dark || theme == ThemeManager::DarkHighContrast);
     
     // Targeted styling for checkboxes and tree indicators in dark mode
     if (isDark) {

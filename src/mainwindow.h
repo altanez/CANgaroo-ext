@@ -189,10 +189,13 @@ private:
     void updateRecentFilesMenu();
 
     void createLanguageMenu();
+    void createThemeMenu();
+    void syncThemeActionGroup();
     void setupDockFloatReparent(QDockWidget *dock, QMainWindow *innerParent);
     void applyFontSize(int pointSize);
     QTranslator m_translator;
     QActionGroup *m_languageActionGroup = nullptr;
+    QActionGroup *m_themeActionGroup = nullptr;
 
     void checkZsCanFdDlls();
     void downloadZsCanFdDlls();

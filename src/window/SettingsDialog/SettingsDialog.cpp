@@ -42,6 +42,22 @@ SettingsDialog::SettingsDialog(QSettings &settings, QActionGroup *languageGroup,
     auto *grpAppearance = new QGroupBox(tr("Appearance"), this);
     auto *formAppearance = new QFormLayout(grpAppearance);
 
+    m_themeModeCombo = new QComboBox(grpAppearance);
+    m_themeModeCombo->addItem(tr("Auto (System)"), 0);
+    m_themeModeCombo->addItem(tr("Light"), 1);
+    m_themeModeCombo->addItem(tr("Dark"), 2);
+    m_themeModeCombo->addItem(tr("Dark High Contrast"), 3);
+    const int currentThemeMode = settings.value("ui/themeMode", 0).toInt();
+    for (int i = 0; i < m_themeModeCombo->count(); ++i)
+    {
+        if (m_themeModeCombo->itemData(i).toInt() == currentThemeMode)
+        {
+            m_themeModeCombo->setCurrentIndex(i);
+            break;
+        }
+    }
+    formAppearance->addRow(tr("Color theme:"), m_themeModeCombo);
+
     m_nativeStylingCheck = new QCheckBox(tr("Use native system styling (GNOME/Adwaita)"), grpAppearance);
     m_nativeStylingCheck->setToolTip(tr("Defer to the selected style and the desktop theme instead of "
                                         "applying CANgaroo's own palette and colors."));
@@ -60,7 +76,7 @@ SettingsDialog::SettingsDialog(QSettings &settings, QActionGroup *languageGroup,
             break;
         }
     }
-    formAppearance->addRow(tr("Theme:"), m_themeCombo);
+    formAppearance->addRow(tr("Widget style:"), m_themeCombo);
 
     m_languageCombo = new QComboBox(grpAppearance);
     QString savedLocale = settings.value("ui/language", "en_US").toString();
@@ -185,6 +201,11 @@ SettingsDialog::SettingsDialog(QSettings &settings, QActionGroup *languageGroup,
     connect(buttons, &QDialogButtonBox::accepted, this, &QDialog::accept);
     connect(buttons, &QDialogButtonBox::rejected, this, &QDialog::reject);
     mainLayout->addWidget(buttons);
+}
+
+int SettingsDialog::selectedThemeMode() const
+{
+    return m_themeModeCombo->currentData().toInt();
 }
 
 QString SettingsDialog::selectedTheme() const

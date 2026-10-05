@@ -8,6 +8,7 @@
         <file>assets/graph.svg</file>
         <file>assets/light_theme.qss</file>
         <file>assets/dark_theme.qss</file>
+        <file>assets/dark_high_contrast.qss</file>
         <file>assets/filter-symbolic.svg</file>
         <file>assets/icons/document-new-symbolic.svg</file>
         <file>assets/icons/document-open-symbolic.svg</file>
