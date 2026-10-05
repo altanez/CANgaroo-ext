@@ -49,9 +49,19 @@ include($$PWD/window/window.pri)
 include($$PWD/helpers/helpers.pri)
 
 
-PKGCONFIG += python3-embed
+unix:PKGCONFIG += python3-embed
 unix:INCLUDEPATH += /usr/include/pybind11
-win32:INCLUDEPATH += $$system(python3 -c "import pybind11; print(pybind11.get_include())")
+
+win32 {
+    # pkg-config has no python3-embed on Windows; query the interpreter directly.
+    # The helper prints short (8.3) posix paths, so no quoting is needed.
+    PYCFG = $$system(python3 $$shell_quote($$PWD/../scripts/qmake_python_config.py))
+    PY_PARTS = $$split(PYCFG, ;)
+    INCLUDEPATH += $$member(PY_PARTS, 0)
+    INCLUDEPATH += $$member(PY_PARTS, 1)
+    LIBS += -L$$member(PY_PARTS, 2)
+    LIBS += -l$$member(PY_PARTS, 3)
+}
 
 unix:PKGCONFIG += libnl-3.0
 unix:PKGCONFIG += libnl-route-3.0

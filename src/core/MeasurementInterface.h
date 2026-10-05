@@ -139,6 +139,9 @@ public:
     uint32_t customFdBitrate() const;
     void setCustomFdBitrate(uint32_t customFdBitrate);
 
+    int slcanChannel() const;
+    void setSlcanChannel(int ch);
+
     bool isResolved() const noexcept;
     void setResolved(bool resolved) noexcept;
     QString savedDriverName() const;
@@ -173,6 +176,8 @@ private:
 
     uint32_t _CustomBitrate;
     uint32_t _CustomFdBitrate;
+
+    int _slcanChannel;   // SLCAN physical channel (P0..P4 extension), 0 default
 
     // LIN
     unsigned           _linBaudRate;

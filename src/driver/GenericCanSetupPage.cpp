@@ -21,11 +21,15 @@
 #include "ui_GenericCanSetupPage.h"
 #include "core/Backend.h"
 #include "driver/BusInterface.h"
+#include "driver/CanDriver.h"
 #include "core/MeasurementInterface.h"
 #include "window/SetupDialog/SetupDialog.h"
 #include <QList>
 #include <QtAlgorithms>
 #include <algorithm>
+#include <QComboBox>
+#include <QHBoxLayout>
+#include <QLabel>
 
 GenericCanSetupPage::GenericCanSetupPage(QWidget *parent) :
     QWidget(parent),
@@ -50,6 +54,22 @@ GenericCanSetupPage::GenericCanSetupPage(QWidget *parent) :
 
     connect(ui->CustomBitrateSet, &QLineEdit::textChanged, this, [this]() { updateUI(); });
     connect(ui->CustomFdBitrateSet, &QLineEdit::textChanged, this, [this]() { updateUI(); });
+
+    // SLCAN physical channel selector (firmware P0..P4 extension).
+    // Shown only for SLCAN driver interfaces (see onShowInterfacePage).
+    _slcanChannelRow = new QWidget(this);
+    QHBoxLayout *row = new QHBoxLayout(_slcanChannelRow);
+    row->setContentsMargins(0, 0, 0, 0);
+    QLabel *lbl = new QLabel(tr("SLCAN Channel:"), _slcanChannelRow);
+    _cbSlcanChannel = new QComboBox(_slcanChannelRow);
+    for (int i = 0; i <= 4; i++)
+        _cbSlcanChannel->addItem(tr("CAN%1").arg(i), i);
+    row->addWidget(lbl);
+    row->addWidget(_cbSlcanChannel);
+    row->addStretch();
+    ui->vbOptions->addWidget(_slcanChannelRow);
+    _slcanChannelRow->setVisible(false);
+    connect(_cbSlcanChannel, &QComboBox::currentIndexChanged, this, [this]() { updateUI(); });
 }
 
 GenericCanSetupPage::~GenericCanSetupPage()
@@ -94,6 +114,11 @@ void GenericCanSetupPage::onShowInterfacePage(SetupDialog &dlg, MeasurementInter
     ui->CustomBitrateSet->setText(QString("%1").arg(_mi->customBitrate(), 6, 16,QLatin1Char('0')).toUpper());
     ui->CustomFdBitrateSet->setText(QString("%1").arg(_mi->customFdBitrate(), 6, 16,QLatin1Char('0')).toUpper());
 
+    const bool isSlcan = (intf->getDriver()->getName() == "SLCAN");
+    _slcanChannelRow->setVisible(isSlcan);
+    if (isSlcan)
+        _cbSlcanChannel->setCurrentIndex(qBound(0, _mi->slcanChannel(), 4));
+
     disenableUI(_mi->doConfigure());
     dlg.displayPage(this);
 
@@ -129,6 +154,8 @@ void GenericCanSetupPage::updateUI()
 
         _mi->setCustomBitrateEn(ui->cbCustomBitrate->isChecked());
         _mi->setCustomFdBitrateEn(ui->cbCustomFdBitrate->isChecked());
+
+        _mi->setSlcanChannel(_cbSlcanChannel->currentData().toInt());
 
         _enable_ui_updates = false;
 

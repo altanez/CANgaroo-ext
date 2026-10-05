@@ -50,6 +50,7 @@
 
 #include "core/Backend.h"
 #include "core/MeasurementInterface.h"
+#include "core/Log.h"
 
 #include "SlcanFrameCodec.h"
 
@@ -266,6 +267,7 @@ void SLCANInterface::configureFdBitrate()
 
 void SLCANInterface::open()
 {
+    log_info(tr("SLCAN: open() called for %1").arg(_name));
     _port = std::make_unique<QSerialPort>();
     _port->setPortName(_name);
     _port->setBaudRate(1000000);
@@ -303,6 +305,18 @@ void SLCANInterface::open()
     if (_fdSupport)
         configureFdBitrate();
 
+    // Select physical channel on multi-channel SLCAN firmwares
+    // (WeAct G474: P0..P4, accepted only while the channel is closed)
+    {
+        const int ch = _settings.slcanChannel();
+        if ((ch >= 0) && (ch <= 4)) {
+            QByteArray cmd = "P";
+            cmd += QByteArray::number(ch);
+            cmd += '\r';
+            writePort(cmd);
+        }
+    }
+
     writePort(_settings.isListenOnlyMode() ? "M1\r" : "M0\r");
     writePort("O\r");
 
@@ -332,6 +346,8 @@ void SLCANInterface::open()
 
 void SLCANInterface::close()
 {
+    log_info(tr("SLCAN: close() called for %1 (open=%2, portOpen=%3, offline=%4)")
+             .arg(_name).arg(_isOpen).arg(_port && _port->isOpen()).arg(_isOffline.load()));
     _isOpen = false;
     _state  = state_bus_off;
 
@@ -521,6 +537,16 @@ bool SLCANInterface::readMessage(QList<BusMessage> &msglist, unsigned int timeou
     // Send any queued TX frames before waiting for RX
     drainTxQueue(msglist);
 
+    // Poll bus status once per second ('E' -> "Exx": bit7 = bus-off,
+    // bit0 = TX errors, bit1 = RX errors). Real frames never start
+    // with 'E', so the response line is safe to recognize.
+    const qint64 nowUs = nowMicroseconds();
+    if (nowUs - _lastStatusPoll >= 1000000)
+    {
+        _lastStatusPoll = nowUs;
+        writePort("E\r");
+    }
+
     // Block until data arrives (or timeout). This yields the BusListener thread
     // efficiently rather than busy-spinning.
     if (!_port->waitForReadyRead(static_cast<int>(timeout_ms)))
@@ -537,6 +563,17 @@ bool SLCANInterface::readMessage(QList<BusMessage> &msglist, unsigned int timeou
                 // Bare CR = device ACK for a previously sent frame
                 if (!_noConfirm.load(std::memory_order_relaxed))
                     handleTxConfirm(msglist, true);
+            }
+            else if ((_rxLineBuffer.size() == 3) && (_rxLineBuffer[0] == 'E'))
+            {
+                // Answer to the periodic status poll
+                bool ok = false;
+                const uint st = _rxLineBuffer.mid(1).toUInt(&ok, 16);
+                if (ok)
+                    _state.store((st & 0x80) ? state_bus_off : state_ok,
+                                 std::memory_order_relaxed);
+                else
+                    _rxErrors.fetch_add(1, std::memory_order_relaxed);
             }
             else
             {
@@ -562,6 +599,7 @@ bool SLCANInterface::readMessage(QList<BusMessage> &msglist, unsigned int timeou
     // Handle a disconnected device (port closed underneath us)
     if (!_port->isOpen())
     {
+        log_error(tr("SLCAN: %1 reports port closed -> going offline").arg(_name));
         _isOffline = true;
         _isOpen    = false;
         _state     = state_bus_off;

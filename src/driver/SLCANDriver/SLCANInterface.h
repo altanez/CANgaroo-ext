@@ -142,4 +142,7 @@ private:
     std::atomic<uint64_t> _txCount{0};
     std::atomic<int>      _txErrors{0};
     std::atomic<uint64_t> _txDropped{0};
+
+    // Bus status polling ('E' command), BusListener thread only
+    qint64 _lastStatusPoll{0};
 };

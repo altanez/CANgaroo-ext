@@ -30,6 +30,7 @@ class BusInterface;
 class SetupDialog;
 class MeasurementInterface;
 class Backend;
+class QComboBox;
 
 class GenericCanSetupPage : public QWidget
 {
@@ -50,6 +51,9 @@ private:
     Ui::GenericCanSetupPage *ui;
     MeasurementInterface *_mi;
     bool _enable_ui_updates;
+
+    QWidget *_slcanChannelRow;
+    QComboBox *_cbSlcanChannel;
 
     void fillBitratesList(BusInterface *intf, unsigned selectedBitrate);
     void fillSamplePointsForBitrate(BusInterface *intf, unsigned selectedBitrate, unsigned selectedSamplePoint);
