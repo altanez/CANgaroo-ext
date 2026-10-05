@@ -63,7 +63,7 @@ GenericCanSetupPage::GenericCanSetupPage(QWidget *parent) :
     QLabel *lbl = new QLabel(tr("SLCAN Channel:"), _slcanChannelRow);
     _cbSlcanChannel = new QComboBox(_slcanChannelRow);
     for (int i = 0; i <= 4; i++)
-        _cbSlcanChannel->addItem(tr("CAN%1").arg(i), i);
+        _cbSlcanChannel->addItem(tr("P%1 (CAN%2)").arg(i).arg(i), i);
     row->addWidget(lbl);
     row->addWidget(_cbSlcanChannel);
     row->addStretch();

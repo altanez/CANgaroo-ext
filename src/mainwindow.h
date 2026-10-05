@@ -172,6 +172,11 @@ private:
     // Toolbar button whose icon has to be recolored on every theme change.
     class QPushButton *_btnOpenGraph = nullptr;
 
+    // SLCAN physical channel quick selector (P0..P4)
+    class QComboBox *_cbSlcanChannel = nullptr;
+    void updateSlcanChannelFromUI();
+    void syncSlcanChannelToUI();
+
     QAction *_actionRecord = nullptr;
     class QToolButton *_btnRecord = nullptr;
     class QLabel *_recordStatusLabel = nullptr;

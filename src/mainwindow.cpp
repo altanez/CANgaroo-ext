@@ -192,18 +192,35 @@ void MainWindow::initActions()
     ui->menuFile->insertSeparator(ui->action_WorkspaceSave);
     updateRecentFilesMenu();
 
+    // SLCAN Channel quick selector (P0..P4)
+    _cbSlcanChannel = new QComboBox(this);
+    _cbSlcanChannel->setToolTip(tr("Quick select SLCAN physical interface (P0..P4)"));
+    _cbSlcanChannel->setCursor(Qt::PointingHandCursor);
+    for (int i = 0; i <= 4; ++i) {
+        _cbSlcanChannel->addItem(tr("P%1 (CAN%2)").arg(i).arg(i), i);
+    }
+    const int savedChannel = settings.value("mainWindow/slcanChannel", 0).toInt();
+    _cbSlcanChannel->setCurrentIndex(qBound(0, savedChannel, 4));
+
+    // Insert right after btnStopMeasurement (index 2 in horizontalLayoutControls)
+    ui->horizontalLayoutControls->insertWidget(2, _cbSlcanChannel);
+
+    connect(_cbSlcanChannel, QOverload<int>::of(&QComboBox::currentIndexChanged),
+            this, &MainWindow::updateSlcanChannelFromUI);
+    connect(&backend(), &Backend::onSetupChanged, this, &MainWindow::syncSlcanChannelToUI);
+
     // Open Standalone Graph Button
     // The icon is set in applyActionIcons() so it tracks the palette.
     _btnOpenGraph = new QPushButton(tr("Graph"), this);
     _btnOpenGraph->setToolTip(tr("Open Standalone Graph Window (Ctrl+Shift+B)"));
     _btnOpenGraph->setCursor(Qt::PointingHandCursor);
-    ui->horizontalLayoutControls->insertWidget(4, _btnOpenGraph);
+    ui->horizontalLayoutControls->insertWidget(5, _btnOpenGraph);
     connect(_btnOpenGraph, &QPushButton::clicked, this, &MainWindow::createStandaloneGraphWindow);
 
     // Gateway Button
     auto *btnGateway = new QPushButton(tr("Gateway"), this);
     btnGateway->setCursor(Qt::PointingHandCursor);
-    ui->horizontalLayoutControls->insertWidget(5, btnGateway);
+    ui->horizontalLayoutControls->insertWidget(6, btnGateway);
     connect(btnGateway, &QPushButton::clicked, this, &MainWindow::createGatewayWindow);
 
     auto updateGatewayButton = [btnGateway, this]() {
@@ -291,6 +308,7 @@ void MainWindow::initWorkspace()
 {
     setWorkspaceModified(false);
     newWorkspace();
+    updateSlcanChannelFromUI();
 
     // Restore each tab's inner dock layout after newWorkspace() creates them.
     // Must be deferred via singleShot(0) so it fires after the resizeDocks()
@@ -564,6 +582,55 @@ void MainWindow::updateMeasurementActions()
     ui->btnStartMeasurement->setEnabled(!running);
     ui->btnSetupMeasurement->setEnabled(!running);
     ui->btnStopMeasurement->setEnabled(running);
+
+    if (_cbSlcanChannel)
+        _cbSlcanChannel->setEnabled(!running);
+}
+
+void MainWindow::updateSlcanChannelFromUI()
+{
+    if (!_cbSlcanChannel)
+        return;
+
+    const int ch = _cbSlcanChannel->currentData().toInt();
+    settings.setValue("mainWindow/slcanChannel", ch);
+    bool changed = false;
+
+    for (auto *network : backend().getSetup().getNetworks()) {
+        for (auto *mi : network->interfaces()) {
+            BusInterface *intf = backend().getInterfaceById(mi->busInterface());
+            if (intf && intf->getDriver()->getName() == "SLCAN") {
+                if (mi->slcanChannel() != ch) {
+                    mi->setSlcanChannel(ch);
+                    changed = true;
+                }
+            }
+        }
+    }
+    if (changed) {
+        setWorkspaceModified(true);
+    }
+}
+
+void MainWindow::syncSlcanChannelToUI()
+{
+    if (!_cbSlcanChannel)
+        return;
+
+    for (auto *network : backend().getSetup().getNetworks()) {
+        for (auto *mi : network->interfaces()) {
+            BusInterface *intf = backend().getInterfaceById(mi->busInterface());
+            if (intf && intf->getDriver()->getName() == "SLCAN") {
+                const int ch = qBound(0, mi->slcanChannel(), 4);
+                if (_cbSlcanChannel->currentIndex() != ch) {
+                    QSignalBlocker blocker(_cbSlcanChannel);
+                    _cbSlcanChannel->setCurrentIndex(ch);
+                    settings.setValue("mainWindow/slcanChannel", ch);
+                }
+                return;
+            }
+        }
+    }
 }
 
 static RecordingConfig loadRecordingConfig(QSettings &settings)
@@ -1401,6 +1468,7 @@ void MainWindow::showAboutDialog()
 
 void MainWindow::startMeasurement()
 {
+    updateSlcanChannelFromUI();
     if (!_hasConfirmedSetup)
     {
         if (showSetupDialog())
