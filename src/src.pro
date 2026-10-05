@@ -55,7 +55,7 @@ unix:INCLUDEPATH += /usr/include/pybind11
 win32 {
     # pkg-config has no python3-embed on Windows; query the interpreter directly.
     # The helper prints short (8.3) posix paths, so no quoting is needed.
-    PYCFG = $$system(python3 $$shell_quote($$PWD/../scripts/qmake_python_config.py))
+    PYCFG = $$system(python3 $$PWD/../scripts/qmake_python_config.py)
     PY_PARTS = $$split(PYCFG, ;)
     INCLUDEPATH += $$member(PY_PARTS, 0)
     INCLUDEPATH += $$member(PY_PARTS, 1)
