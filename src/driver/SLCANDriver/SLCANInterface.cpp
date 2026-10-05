@@ -284,6 +284,8 @@ void SLCANInterface::open()
         _isOffline = true;
         return;
     }
+    _port->setDataTerminalReady(true);
+    _port->setRequestToSend(true);
     _port->clear();
 
     // Close any open CAN channel, then probe whether device sends confirmations.
@@ -307,22 +309,19 @@ void SLCANInterface::open()
 
     // Select physical channel on multi-channel SLCAN firmwares
     // (WeAct G474: P0..P4, accepted only while the channel is closed)
-    {
-        const int ch = _settings.slcanChannel();
-        if ((ch >= 0) && (ch <= 4)) {
-            QByteArray cmd = "P";
-            cmd += QByteArray::number(ch);
-            cmd += '\r';
-            writePort(cmd);
-        }
+    const int ch = _settings.slcanChannel();
+    log_info(tr("SLCAN: opening %1 on P%2 (CAN%3), nominal %4 kbit/s, data %5 kbit/s")
+             .arg(_name).arg(ch).arg(ch)
+             .arg(_settings.bitrate() / 1000).arg(_settings.fdBitrate() / 1000));
+    if ((ch >= 0) && (ch <= 4)) {
+        QByteArray cmd = "P";
+        cmd += QByteArray::number(ch);
+        cmd += '\r';
+        writePort(cmd);
     }
 
     writePort(_settings.isListenOnlyMode() ? "M1\r" : "M0\r");
     writePort("O\r");
-
-    // Discard any immediate responses from opening
-    if (_port->waitForReadyRead(10))
-        _port->readAll();
 
     // Reset driver state — only touched from this thread hereafter
     _rxLineBuffer.clear();
@@ -510,6 +509,7 @@ bool SLCANInterface::parseRxLine(QList<BusMessage> &msglist)
     if (!slcan::parseFrameLine(_rxLineBuffer, msg))
     {
         _rxErrors.fetch_add(1, std::memory_order_relaxed);
+        log_warning(tr("SLCAN: failed to parse frame '%1'").arg(QString::fromLatin1(_rxLineBuffer)));
         return false;
     }
 
@@ -518,7 +518,12 @@ bool SLCANInterface::parseRxLine(QList<BusMessage> &msglist)
     msg.setRX(true);
 
     msglist.append(std::move(msg));
-    _rxCount.fetch_add(1, std::memory_order_relaxed);
+    const uint64_t count = _rxCount.fetch_add(1, std::memory_order_relaxed) + 1;
+    if (count == 1 || count % 5000 == 0)
+    {
+        log_info(tr("SLCAN: received %1 frame(s) on %2 (last ID 0x%3)")
+                 .arg(count).arg(_name).arg(msg.getId(), 0, 16));
+    }
     return true;
 }
 
@@ -547,9 +552,14 @@ bool SLCANInterface::readMessage(QList<BusMessage> &msglist, unsigned int timeou
         writePort("E\r");
     }
 
-    // Block until data arrives (or timeout). This yields the BusListener thread
-    // efficiently rather than busy-spinning.
-    if (!_port->waitForReadyRead(static_cast<int>(timeout_ms)))
+    // Block until data arrives (or timeout). On Windows, waitForReadyRead() can
+    // return false even when bytes are already in the port buffer.
+    if (_port->bytesAvailable() == 0)
+    {
+        _port->waitForReadyRead(static_cast<int>(timeout_ms));
+    }
+
+    if (_port->bytesAvailable() == 0)
         return !msglist.isEmpty();
 
     const QByteArray incoming = _port->readAll();
@@ -589,6 +599,11 @@ bool SLCANInterface::readMessage(QList<BusMessage> &msglist, unsigned int timeou
             else if (!_noConfirm.load(std::memory_order_relaxed))
                 handleTxConfirm(msglist, false);
             _rxLineBuffer.clear();
+        }
+        else if (c == '\n')
+        {
+            // Ignore stray LF
+            continue;
         }
         else
         {
