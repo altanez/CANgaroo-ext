@@ -23,7 +23,11 @@ RC_ICONS = cangaroo.ico
 
 INCLUDEPATH += $$PWD
 
-DESTDIR = ../bin
+win32:exists(D:/Soft/cangaroo/CANgaroo-fork) {
+    DESTDIR = D:/Soft/cangaroo/CANgaroo-fork
+} else {
+    DESTDIR = ../bin
+}
 MOC_DIR = ../build/moc
 RCC_DIR = ../build/rcc
 UI_DIR = ../build/ui
@@ -55,7 +59,7 @@ unix:INCLUDEPATH += /usr/include/pybind11
 win32 {
     # pkg-config has no python3-embed on Windows; query the interpreter directly.
     # The helper prints short (8.3) posix paths, so no quoting is needed.
-    PYCFG = $$system(python3 $$PWD/../scripts/qmake_python_config.py)
+    PYCFG = $$system(python $$PWD/../scripts/qmake_python_config.py)
     PY_PARTS = $$split(PYCFG, ;)
     INCLUDEPATH += $$member(PY_PARTS, 0)
     INCLUDEPATH += $$member(PY_PARTS, 1)
