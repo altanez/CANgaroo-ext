@@ -24,6 +24,7 @@
 
 #include <QDialog>
 #include <QAction>
+#include <QMap>
 
 class Backend;
 class MeasurementSetup;
@@ -32,6 +33,7 @@ class MeasurementInterface;
 class QItemSelection;
 class SetupDialogTreeItem;
 class SetupDialogTreeModel;
+class QScrollArea;
 
 namespace Ui {
 class SetupDialog;
@@ -86,6 +88,7 @@ private:
     Ui::SetupDialog *ui;
     Backend *_backend;
     bool _isReflashNetworks;
+    QMap<QWidget *, QScrollArea *> _pageScrollAreas;
 
     QAction *_actionDeleteInterface;
     QAction *_actionDeleteCanDb;

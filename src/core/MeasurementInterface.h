@@ -145,6 +145,9 @@ public:
     bool slcanGatewayOnStop() const;
     void setSlcanGatewayOnStop(bool enable);
 
+    bool slcanWakeOnStart() const;
+    void setSlcanWakeOnStart(bool enable);
+
     bool isResolved() const noexcept;
     void setResolved(bool resolved) noexcept;
     QString savedDriverName() const;
@@ -182,6 +185,7 @@ private:
 
     int _slcanChannel;   // SLCAN physical channel (P0..P4 extension), 0 default
     bool _slcanGatewayOnStop; // Return to GATEWAY mode on stop ('G' extension)
+    bool _slcanWakeOnStart;   // Wake to SLCAN mode on start ('S' extension)
 
     // LIN
     unsigned           _linBaudRate;

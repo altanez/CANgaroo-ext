@@ -51,6 +51,7 @@ MeasurementInterface::MeasurementInterface()
     _CustomFdBitrate(0x011508),
     _slcanChannel(0),
     _slcanGatewayOnStop(false),
+    _slcanWakeOnStart(true),
 
     _linBaudRate(19200),
     _linProtocolVersion(LinProtocolVersion::V2_2A),
@@ -92,6 +93,7 @@ bool MeasurementInterface::loadXML(Backend &backend, QDomElement &el)
     _CustomFdBitrate = el.attribute("custom-fdbitrate", "0").toInt();
     _slcanChannel = el.attribute("slcan-channel", "0").toInt();
     _slcanGatewayOnStop = el.attribute("slcan-gateway-on-stop", "0").toInt() != 0;
+    _slcanWakeOnStart = el.attribute("slcan-wake-on-start", "1").toInt() != 0;
     _enabled = el.attribute("enabled", "1").toInt() != 0;
 
     _linBaudRate = el.attribute("lin-baudrate", "19200").toUInt();
@@ -159,6 +161,7 @@ bool MeasurementInterface::saveXML(Backend &backend, QDomDocument &xml, QDomElem
     root.setAttribute("custom-fdbitrate", _CustomFdBitrate);
     root.setAttribute("slcan-channel", _slcanChannel);
     root.setAttribute("slcan-gateway-on-stop", _slcanGatewayOnStop ? 1 : 0);
+    root.setAttribute("slcan-wake-on-start", _slcanWakeOnStart ? 1 : 0);
     root.setAttribute("enabled", _enabled ? 1 : 0);
 
     root.setAttribute("lin-baudrate", _linBaudRate);
@@ -372,6 +375,16 @@ bool MeasurementInterface::slcanGatewayOnStop() const
 void MeasurementInterface::setSlcanGatewayOnStop(bool enable)
 {
     _slcanGatewayOnStop = enable;
+}
+
+bool MeasurementInterface::slcanWakeOnStart() const
+{
+    return _slcanWakeOnStart;
+}
+
+void MeasurementInterface::setSlcanWakeOnStart(bool enable)
+{
+    _slcanWakeOnStart = enable;
 }
 
 bool MeasurementInterface::isEnabled() const noexcept

@@ -27,6 +27,7 @@
 #include <QFileDialog>
 #include <QTreeWidget>
 #include <QMessageBox>
+#include <QScrollArea>
 
 #include "core/Backend.h"
 #include "core/MeasurementSetup.h"
@@ -97,6 +98,8 @@ SetupDialog::SetupDialog(Backend &backend, QWidget *parent) :
     connect(_actionAddInterface, &QAction::triggered, this, &SetupDialog::executeAddInterface);
     connect(_actionDeleteInterface, &QAction::triggered, this, &SetupDialog::executeDeleteInterface);
 
+    ui->splitter->setStretchFactor(0, 1);
+    ui->splitter->setStretchFactor(1, 3);
 
     emit backend.onSetupDialogCreated(*this);
 }
@@ -109,12 +112,26 @@ SetupDialog::~SetupDialog()
 
 void SetupDialog::addPage(QWidget *widget)
 {
-    ui->stackedWidget->addWidget(widget);
+    auto *scrollArea = new QScrollArea(ui->stackedWidget);
+    scrollArea->setWidgetResizable(true);
+    scrollArea->setFrameShape(QFrame::NoFrame);
+    scrollArea->setHorizontalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setVerticalScrollBarPolicy(Qt::ScrollBarAsNeeded);
+    scrollArea->setWidget(widget);
+    _pageScrollAreas.insert(widget, scrollArea);
+    ui->stackedWidget->addWidget(scrollArea);
 }
 
 void SetupDialog::displayPage(QWidget *widget)
 {
-    ui->stackedWidget->setCurrentWidget(widget);
+    if (_pageScrollAreas.contains(widget))
+    {
+        ui->stackedWidget->setCurrentWidget(_pageScrollAreas.value(widget));
+    }
+    else
+    {
+        ui->stackedWidget->setCurrentWidget(widget);
+    }
 }
 
 bool SetupDialog::showSetupDialog(MeasurementSetup &setup)

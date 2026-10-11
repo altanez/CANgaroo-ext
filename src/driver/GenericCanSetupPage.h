@@ -58,8 +58,11 @@ private:
     QComboBox *_cbSlcanChannel;
 
     QWidget *_slcanGatewayRow;
+    QCheckBox *_cbSlcanWakeOnStart;
     QCheckBox *_cbSlcanGatewayOnStop;
+    QPushButton *_btnSlcanMode;
     QPushButton *_btnSlcanGateway;
+    QPushButton *_btnRebootDfu;
 
     void fillBitratesList(BusInterface *intf, unsigned selectedBitrate);
     void fillSamplePointsForBitrate(BusInterface *intf, unsigned selectedBitrate, unsigned selectedSamplePoint);

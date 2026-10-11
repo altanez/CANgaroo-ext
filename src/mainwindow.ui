@@ -177,6 +177,7 @@
      <addaction name="actionReplay_View"/>
      <addaction name="actionLin_Control_View"/>
      <addaction name="actionGpio_Control_View"/>
+     <addaction name="actionCmd_View"/>
     </widget>
     <addaction name="menu_New"/>
    </widget>
@@ -412,6 +413,11 @@
   <action name="actionSettings">
    <property name="text">
     <string>&amp;Settings...</string>
+   </property>
+  </action>
+  <action name="actionCmd_View">
+   <property name="text">
+    <string>CMD View</string>
    </property>
   </action>
  </widget>

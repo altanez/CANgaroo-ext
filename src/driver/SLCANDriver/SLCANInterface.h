@@ -85,6 +85,9 @@ public:
     bool isOpen() override;
 
     bool switchToGatewayMode();
+    bool switchToSlcanMode();
+    bool rebootToDfu();
+    bool sendGatewayCmd(uint8_t cmd, uint8_t p1 = 0, uint8_t p2 = 0, uint8_t p3 = 0);
 
     void sendMessage(const BusMessage &msg) override;
     bool readMessage(QList<BusMessage> &msglist, unsigned int timeout_ms) override;

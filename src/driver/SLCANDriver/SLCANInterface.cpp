@@ -288,6 +288,17 @@ void SLCANInterface::open()
     _port->setRequestToSend(true);
     _port->clear();
 
+    if (_settings.slcanWakeOnStart())
+    {
+        // If device is in GATEWAY mode (firmware extension), send 'S\r' to switch to SLCAN mode.
+        // In GATEWAY mode, 'S\r' switches to SLCAN and returns "SLCAN mode\r".
+        // In SLCAN mode, 'S\r' returns BEL (NACK), harmlessly discarded.
+        log_info(tr("SLCAN: sending S command to wake %1 to SLCAN mode").arg(_name));
+        writePort("S\r");
+        _port->waitForReadyRead(30);
+        _port->readAll(); // discard "SLCAN mode\r" or NACK BEL
+    }
+
     // Close any open CAN channel, then probe whether device sends confirmations.
     // A device that responds to "C\r" with CR is in confirm mode.
     writePort("C\r");
@@ -420,6 +431,134 @@ bool SLCANInterface::switchToGatewayMode()
     port.close();
 
     log_info(tr("SLCAN: command G sent, %1 switched to GATEWAY mode").arg(_name));
+    return true;
+}
+
+bool SLCANInterface::switchToSlcanMode()
+{
+    log_info(tr("SLCAN: switchToSlcanMode() called for %1").arg(_name));
+    if (_isOpen)
+    {
+        log_warning(tr("SLCAN: cannot switch mode while channel is open"));
+        return false;
+    }
+
+    QSerialPort port;
+    port.setPortName(_name);
+    port.setBaudRate(1000000);
+    port.setDataBits(QSerialPort::Data8);
+    port.setParity(QSerialPort::NoParity);
+    port.setStopBits(QSerialPort::OneStop);
+    port.setFlowControl(QSerialPort::NoFlowControl);
+
+    if (!port.open(QIODevice::ReadWrite))
+    {
+        log_error(tr("SLCAN: failed to open port %1 to send S command: %2").arg(_name, port.errorString()));
+        return false;
+    }
+
+    port.setDataTerminalReady(true);
+    port.setRequestToSend(true);
+    port.clear();
+
+    // Send 'S\r' to switch from GATEWAY to SLCAN mode
+    port.write("S\r");
+    port.waitForBytesWritten(50);
+    port.waitForReadyRead(50);
+    const QByteArray resp = port.readAll();
+
+    port.clear();
+    port.close();
+
+    log_info(tr("SLCAN: command S sent to %1, response: %2").arg(_name, QString::fromLatin1(resp).trimmed()));
+    return true;
+}
+
+bool SLCANInterface::rebootToDfu()
+{
+    log_info(tr("SLCAN: rebootToDfu() called for %1").arg(_name));
+    if (_isOpen)
+    {
+        log_warning(tr("SLCAN: cannot reboot to DFU while channel is open"));
+        return false;
+    }
+
+    QSerialPort port;
+    port.setPortName(_name);
+    port.setBaudRate(1000000);
+    port.setDataBits(QSerialPort::Data8);
+    port.setParity(QSerialPort::NoParity);
+    port.setStopBits(QSerialPort::OneStop);
+    port.setFlowControl(QSerialPort::NoFlowControl);
+
+    if (!port.open(QIODevice::ReadWrite))
+    {
+        log_error(tr("SLCAN: failed to open port %1 to send DFU command: %2").arg(_name, port.errorString()));
+        return false;
+    }
+
+    port.setDataTerminalReady(true);
+    port.setRequestToSend(true);
+    port.clear();
+
+    // 1. Wake to SLCAN mode first in case device was in GATEWAY mode
+    port.write("S\r");
+    port.waitForBytesWritten(50);
+    port.waitForReadyRead(30);
+    port.readAll(); // discard "SLCAN mode\r" or NACK BEL
+
+    // 2. Send 'U\r' to trigger reboot into DFU bootloader
+    port.write("U\r");
+    port.waitForBytesWritten(50);
+    port.waitForReadyRead(30);
+    port.readAll(); // discard ACK CR
+
+    port.clear();
+    port.close();
+
+    log_info(tr("SLCAN: command U sent, %1 rebooting into DFU bootloader").arg(_name));
+    return true;
+}
+
+bool SLCANInterface::sendGatewayCmd(uint8_t cmd, uint8_t p1, uint8_t p2, uint8_t p3)
+{
+    QString line = QString("K %1 %2 %3 %4\r").arg(cmd).arg(p1).arg(p2).arg(p3);
+    log_info(tr("SLCAN: sending gateway cmd to %1: %2").arg(_name, line.trimmed()));
+
+    if (_isOpen && _port && _port->isOpen())
+    {
+        _port->write(line.toLatin1());
+        _port->waitForBytesWritten(50);
+        _port->waitForReadyRead(50);
+        return true;
+    }
+
+    QSerialPort port;
+    port.setPortName(_name);
+    port.setBaudRate(1000000);
+    port.setDataBits(QSerialPort::Data8);
+    port.setParity(QSerialPort::NoParity);
+    port.setStopBits(QSerialPort::OneStop);
+    port.setFlowControl(QSerialPort::NoFlowControl);
+
+    if (!port.open(QIODevice::ReadWrite))
+    {
+        log_error(tr("SLCAN: failed to open port %1 to send cmd: %2").arg(_name, port.errorString()));
+        return false;
+    }
+
+    port.setDataTerminalReady(true);
+    port.setRequestToSend(true);
+    port.clear();
+
+    port.write(line.toLatin1());
+    port.waitForBytesWritten(50);
+    port.waitForReadyRead(50);
+
+    port.clear();
+    port.close();
+
+    log_info(tr("SLCAN: gateway cmd sent to %1").arg(_name));
     return true;
 }
 

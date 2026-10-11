@@ -75,20 +75,59 @@ GenericCanSetupPage::GenericCanSetupPage(QWidget *parent) :
     _slcanChannelRow->setVisible(false);
     connect(_cbSlcanChannel, &QComboBox::currentIndexChanged, this, [this]() { updateUI(); });
 
-    // SLCAN gateway mode controls ('G' command)
+    // SLCAN dual-mode controls ('S' / 'G' commands for WeAct / dual-mode firmware)
     _slcanGatewayRow = new QWidget(this);
-    QHBoxLayout *gwRow = new QHBoxLayout(_slcanGatewayRow);
-    gwRow->setContentsMargins(0, 0, 0, 0);
-    _cbSlcanGatewayOnStop = new QCheckBox(tr("Return device to GATEWAY mode on stop ('G')"), _slcanGatewayRow);
-    _btnSlcanGateway = new QPushButton(tr("Send 'G' (GATEWAY mode)"), _slcanGatewayRow);
-    _btnSlcanGateway->setToolTip(tr("Send 'G' command now to return the device to GATEWAY mode (firmware extension)"));
-    gwRow->addWidget(_cbSlcanGatewayOnStop);
-    gwRow->addWidget(_btnSlcanGateway);
-    gwRow->addStretch();
+    QVBoxLayout *gwLayout = new QVBoxLayout(_slcanGatewayRow);
+    gwLayout->setContentsMargins(0, 0, 0, 0);
+    gwLayout->setSpacing(6);
+
+    _cbSlcanWakeOnStart = new QCheckBox(tr("Auto-switch to SLCAN on start ('S')"), _slcanGatewayRow);
+    _cbSlcanGatewayOnStop = new QCheckBox(tr("Return device to GATEWAY on stop ('G')"), _slcanGatewayRow);
+    gwLayout->addWidget(_cbSlcanWakeOnStart);
+    gwLayout->addWidget(_cbSlcanGatewayOnStop);
+
+    QHBoxLayout *btnRow = new QHBoxLayout();
+    btnRow->setSpacing(6);
+    QLabel *lblMode = new QLabel(tr("Device mode:"), _slcanGatewayRow);
+    _btnSlcanMode = new QPushButton(tr("SLCAN ('S')"), _slcanGatewayRow);
+    _btnSlcanMode->setToolTip(tr("Send 'S' command to switch device from GATEWAY into SLCAN mode"));
+    _btnSlcanGateway = new QPushButton(tr("GATEWAY ('G')"), _slcanGatewayRow);
+    _btnSlcanGateway->setToolTip(tr("Send 'G' command to switch device from SLCAN into GATEWAY mode"));
+    _btnRebootDfu = new QPushButton(tr("DFU ('U')"), _slcanGatewayRow);
+    _btnRebootDfu->setToolTip(tr("Send 'U' command to reboot device into STM32 USB DFU bootloader"));
+    btnRow->addWidget(lblMode);
+    btnRow->addWidget(_btnSlcanMode);
+    btnRow->addWidget(_btnSlcanGateway);
+    btnRow->addWidget(_btnRebootDfu);
+    btnRow->addStretch();
+    gwLayout->addLayout(btnRow);
+
     ui->vbOptions->addWidget(_slcanGatewayRow);
     _slcanGatewayRow->setVisible(false);
 
+    connect(_cbSlcanWakeOnStart, &QCheckBox::stateChanged, this, [this]() { updateUI(); });
     connect(_cbSlcanGatewayOnStop, &QCheckBox::stateChanged, this, [this]() { updateUI(); });
+
+    connect(_btnSlcanMode, &QPushButton::clicked, this, [this]() {
+        if (!_mi)
+            return;
+        BusInterface *intf = backend().getInterfaceById(_mi->busInterface());
+        auto *slcan = dynamic_cast<SLCANInterface*>(intf);
+        if (slcan)
+        {
+            if (slcan->switchToSlcanMode())
+            {
+                QMessageBox::information(this, tr("SLCAN Mode"),
+                    tr("Command 'S' sent successfully to %1.\nDevice switched to SLCAN mode.").arg(slcan->getName()));
+            }
+            else
+            {
+                QMessageBox::warning(this, tr("SLCAN Mode"),
+                    tr("Failed to send 'S' command to %1.\nCheck that the interface is not currently running.").arg(slcan->getName()));
+            }
+        }
+    });
+
     connect(_btnSlcanGateway, &QPushButton::clicked, this, [this]() {
         if (!_mi)
             return;
@@ -106,6 +145,33 @@ GenericCanSetupPage::GenericCanSetupPage(QWidget *parent) :
                 QMessageBox::warning(this, tr("SLCAN Gateway Mode"),
                     tr("Failed to send 'G' command to %1.\nCheck that the interface is not currently running.").arg(slcan->getName()));
             }
+        }
+    });
+
+    connect(_btnRebootDfu, &QPushButton::clicked, this, [this]() {
+        if (!_mi)
+            return;
+        BusInterface *intf = backend().getInterfaceById(_mi->busInterface());
+        auto *slcan = dynamic_cast<SLCANInterface*>(intf);
+        if (!slcan)
+            return;
+
+        const auto reply = QMessageBox::question(this, tr("Reboot into DFU"),
+            tr("Reboot device %1 into STM32 DFU bootloader?\n\nThe COM port will disconnect until firmware is flashed or device is reset.").arg(slcan->getName()),
+            QMessageBox::Yes | QMessageBox::No, QMessageBox::No);
+
+        if (reply != QMessageBox::Yes)
+            return;
+
+        if (slcan->rebootToDfu())
+        {
+            QMessageBox::information(this, tr("DFU Bootloader"),
+                tr("Command 'U' sent successfully to %1.\nDevice is rebooting into STM32 DFU bootloader.").arg(slcan->getName()));
+        }
+        else
+        {
+            QMessageBox::warning(this, tr("DFU Bootloader"),
+                tr("Failed to send 'U' command to %1.\nCheck that the interface is not currently running.").arg(slcan->getName()));
         }
     });
 }
@@ -158,6 +224,7 @@ void GenericCanSetupPage::onShowInterfacePage(SetupDialog &dlg, MeasurementInter
     if (isSlcan)
     {
         _cbSlcanChannel->setCurrentIndex(qBound(0, _mi->slcanChannel(), 4));
+        _cbSlcanWakeOnStart->setChecked(_mi->slcanWakeOnStart());
         _cbSlcanGatewayOnStop->setChecked(_mi->slcanGatewayOnStop());
     }
 
@@ -198,6 +265,7 @@ void GenericCanSetupPage::updateUI()
         _mi->setCustomFdBitrateEn(ui->cbCustomFdBitrate->isChecked());
 
         _mi->setSlcanChannel(_cbSlcanChannel->currentData().toInt());
+        _mi->setSlcanWakeOnStart(_cbSlcanWakeOnStart->isChecked());
         _mi->setSlcanGatewayOnStop(_cbSlcanGatewayOnStop->isChecked());
 
         _enable_ui_updates = false;

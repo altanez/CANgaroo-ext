@@ -59,6 +59,7 @@
 #include "window/ReplayWindow/ReplayWindow.h"
 #include "window/LinControlWindow/LinControlWindow.h"
 #include "window/GpioControlWindow/GpioControlWindow.h"
+#include "window/CmdWindow/CmdWindow.h"
 #include "window/GatewayWindow/GatewayWindow.h"
 #include "window/SettingsDialog/SettingsDialog.h"
 #include "window/RecordingDialog/RecordingDialog.h"
@@ -150,6 +151,7 @@ void MainWindow::initActions()
     connect(ui->actionReplay_View, &QAction::triggered, this, [this]() { addReplayWidget(); });
     connect(ui->actionLin_Control_View, &QAction::triggered, this, [this]() { addLinControlWidget(); });
     connect(ui->actionGpio_Control_View, &QAction::triggered, this, [this]() { addGpioControlWidget(); });
+    connect(ui->actionCmd_View, &QAction::triggered, this, [this]() { addCmdWidget(); });
     connect(ui->actionSettings, &QAction::triggered, this, &MainWindow::showSettingsDialog);
 
     auto *actionStandaloneGraph = new QAction(tr("Standalone Graph"), this);
@@ -222,6 +224,13 @@ void MainWindow::initActions()
     btnGateway->setCursor(Qt::PointingHandCursor);
     ui->horizontalLayoutControls->insertWidget(6, btnGateway);
     connect(btnGateway, &QPushButton::clicked, this, &MainWindow::createGatewayWindow);
+
+    // CMD View Button
+    auto *btnCmd = new QPushButton(tr("CMD View"), this);
+    btnCmd->setCursor(Qt::PointingHandCursor);
+    btnCmd->setToolTip(tr("Open CMD View (Gateway Command Processor)"));
+    ui->horizontalLayoutControls->insertWidget(7, btnCmd);
+    connect(btnCmd, &QPushButton::clicked, this, [this]() { addCmdWidget(); });
 
     auto updateGatewayButton = [btnGateway, this]() {
         int canIfCount = 0;
@@ -914,6 +923,16 @@ bool MainWindow::loadWorkspaceTab(QDomElement el)
         if (!gpioEl.isNull())
             addGpioControlWidget(mw);
 
+        // Recreate CmdWindow dock if it was open.
+        QDomElement cmdEl = el.firstChildElement("cmdwindow");
+        if (!cmdEl.isNull())
+        {
+            QDockWidget *cmdDock = addCmdWidget(mw);
+            CmdWindow *cmd = cmdDock ? qobject_cast<CmdWindow *>(cmdDock->widget()) : nullptr;
+            if (cmd)
+                cmd->loadXML(backend(), cmdEl);
+        }
+
         // Restore dock layout state (splits, tabification, sizes).
         // Deferred so it runs after the default layout timer from createTraceWindow().
         const QString dockState = el.attribute("dockstate");
@@ -1077,6 +1096,15 @@ bool MainWindow::saveWorkspaceToFile(const QString &filename)
             QDomElement gpioEl = doc.createElement("gpiocontrolwindow");
             gpio->saveXML(backend(), doc, gpioEl);
             tabEl.appendChild(gpioEl);
+        }
+
+        // Save CmdWindow dock if present.
+        CmdWindow *cmd = w->findChild<CmdWindow *>();
+        if (cmd)
+        {
+            QDomElement cmdEl = doc.createElement("cmdwindow");
+            cmd->saveXML(backend(), doc, cmdEl);
+            tabEl.appendChild(cmdEl);
         }
 
         tabsRoot.appendChild(tabEl);
@@ -1404,6 +1432,16 @@ QDockWidget *MainWindow::addGpioControlWidget(QMainWindow *parent)
 {
     return makeDock(tr("GPIO Control"), QStringLiteral("dock_gpio_control"),
                     new GpioControlWindow(nullptr, backend()), parent);
+}
+
+QDockWidget *MainWindow::addCmdWidget(QMainWindow *parent)
+{
+    auto *cmdWindow = new CmdWindow(nullptr, backend());
+    auto *dock = makeDock(tr("CMD View"), QStringLiteral("dock_cmd_view"), cmdWindow, parent);
+    if (dock)
+        connect(cmdWindow, &ConfigurableWidget::settingsChanged,
+                this, [this]() { setWorkspaceModified(true); });
+    return dock;
 }
 
 void MainWindow::setupDockFloatReparent(QDockWidget *dock, QMainWindow *innerParent)
