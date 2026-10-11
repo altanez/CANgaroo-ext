@@ -133,7 +133,7 @@ QVariant UnifiedTraceViewModel::data(const QModelIndex &index, int role) const
             return BaseTraceViewModel::data_TextAlignmentRole(index, role);
         case ChangedBytesRole:
         {
-            if (index.column() != column_data) { return QVariant(); }
+            if (index.column() != column_data && index.column() != column_ascii) { return QVariant(); }
             UnifiedTraceItem *item = static_cast<UnifiedTraceItem*>(index.internalPointer());
             if (!item || item->isProtocol() || item->isMetadata() || item->isSignal()) { return QVariant(); }
             const BusMessage &cur  = item->rawFrame();
@@ -452,6 +452,8 @@ QVariant UnifiedTraceViewModel::data_DisplayRole(const QModelIndex &index, [[may
             case column_comment: return pmsg.description;
             case column_data:
                 return BusMessage::formatDataBytes(pmsg.payload, dataAsciiMode());
+            case column_ascii:
+                return BusMessage::formatDataBytes(pmsg.payload, true);
             case column_dlc: return pmsg.payload.size();
             case column_direction: return pmsg.rawFrames.isEmpty() ? "" : (pmsg.rawFrames.first().isRX() ? tr("RX") : tr("TX"));
             case column_channel: return pmsg.rawFrames.isEmpty() ? "" : interfaceName(pmsg.rawFrames.first().getInterfaceId());
@@ -477,6 +479,7 @@ QVariant UnifiedTraceViewModel::data_DisplayRole(const QModelIndex &index, [[may
             }
             case column_name: return item->metadataName();
             case column_data: return item->metadataValue();
+            case column_ascii: return QVariant();
             case column_type:
                 if (item->metadataName() == "Priority") return "P";
                 if (item->metadataName() == "Reserved") return "R";
@@ -526,6 +529,7 @@ QVariant UnifiedTraceViewModel::data_DisplayRole(const QModelIndex &index, [[may
                 return QString("0x%1").arg(msg.getId(), 0, 16).toUpper();
             case column_dlc: return msg.getLength();
             case column_data: return dataAsciiMode() ? msg.getDataAsciiString() : msg.getDataHexString();
+            case column_ascii: return msg.getDataAsciiString();
             case column_name:
                 if (msg.busType() == BusType::LIN) {
                     if (msg.isLinSleepFrame())  return tr("Sleep");

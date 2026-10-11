@@ -47,6 +47,7 @@ public:
         column_name,
         column_dlc,
         column_data,
+        column_ascii,
         column_comment,
         column_count
     };

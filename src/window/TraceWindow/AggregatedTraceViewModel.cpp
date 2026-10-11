@@ -314,7 +314,7 @@ QVariant AggregatedTraceViewModel::data_DisplayRole(const QModelIndex &index, in
 
 QVariant AggregatedTraceViewModel::data_ChangedBytesRole(const QModelIndex &index) const
 {
-    if (index.column() != column_data) { return QVariant(); }
+    if (index.column() != column_data && index.column() != column_ascii) { return QVariant(); }
 
     AggregatedTraceViewItem *item = static_cast<AggregatedTraceViewItem *>(index.internalPointer());
     if (!item || item->parent() != _rootItem) { return QVariant(); }

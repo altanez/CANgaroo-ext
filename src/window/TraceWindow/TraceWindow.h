@@ -77,6 +77,7 @@ private slots:
     void on_cbTraceClearpushButton(void);
     void on_cbViewMode_currentIndexChanged(int index);
     void on_tabs_currentChanged(int index);
+    void on_cbAscii_toggled(bool checked);
     void openFilterDialog();
 
 private slots:

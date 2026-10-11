@@ -95,6 +95,8 @@ QVariant BaseTraceViewModel::headerData(int section, Qt::Orientation orientation
                     return QString("DLC");
                 case column_data:
                     return QString(tr("Data"));
+                case column_ascii:
+                    return QString(tr("ASCII"));
                 case column_comment:
                     return QString(tr("Comment"));
             }
@@ -113,6 +115,7 @@ QVariant BaseTraceViewModel::headerData(int section, Qt::Orientation orientation
             case column_name:      return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
             case column_dlc:       return QVariant(Qt::AlignCenter);
             case column_data:      return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
+            case column_ascii:     return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
             case column_comment:   return QVariant(Qt::AlignLeft | Qt::AlignVCenter);
             default: return QVariant();
         }
@@ -141,7 +144,7 @@ QVariant BaseTraceViewModel::data(const QModelIndex &index, int role) const
                 uint div = length / 24;
                 for(uint i = 0;i< div-1;i++)
                 {
-                    if((i+1)%2 == 0 || index.column() != column_data)
+                    if((i+1)%2 == 0 || (index.column() != column_data && index.column() != column_ascii))
                         data.insert(24*(i+1)+i,"\n");
                     else
                         data.insert(24*(i+1)+i," ");
@@ -295,6 +298,9 @@ QVariant BaseTraceViewModel::data_DisplayRole_Message(const QModelIndex &index, 
         case column_data:
             return _dataAsciiMode ? currentMsg.getDataAsciiString() : currentMsg.getDataHexString();
 
+        case column_ascii:
+            return currentMsg.getDataAsciiString();
+
         case column_comment:
         {
             if (isLin)
@@ -337,6 +343,8 @@ QVariant BaseTraceViewModel::data_DisplayRole_Signal(const QModelIndex &index, i
                 }
                 return QStringLiteral("%1 - %2").arg(raw).arg(valName);
             }
+            case column_ascii:
+                return QVariant();
             default:
                 return QVariant();
         }
@@ -379,6 +387,9 @@ QVariant BaseTraceViewModel::data_DisplayRole_Signal(const QModelIndex &index, i
                 return QString("%1 - %2").arg(raw_data).arg(value_name);
             }
 
+        case column_ascii:
+            return QVariant();
+
         case column_comment:
             return dbsignal->comment().replace('\n', ' ');
 
@@ -402,6 +413,7 @@ QVariant BaseTraceViewModel::data_TextAlignmentRole(const QModelIndex &index, in
         case column_name:      return QVariant(Qt::AlignLeft   | Qt::AlignVCenter);
         case column_dlc:       return QVariant(Qt::AlignCenter);
         case column_data:      return QVariant(Qt::AlignLeft   | Qt::AlignVCenter);
+        case column_ascii:     return QVariant(Qt::AlignLeft   | Qt::AlignVCenter);
         case column_comment:   return QVariant(Qt::AlignLeft   | Qt::AlignVCenter);
         default: return QVariant();
     }

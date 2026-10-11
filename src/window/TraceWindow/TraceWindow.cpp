@@ -98,8 +98,10 @@ TraceWindow::TraceWindow(QWidget *parent, Backend &backend) :
         tree->setColumnWidth(BaseTraceViewModel::column_name, 150);
         tree->setColumnWidth(BaseTraceViewModel::column_dlc, 50);
         tree->setColumnWidth(BaseTraceViewModel::column_data, 260);
+        tree->setColumnWidth(BaseTraceViewModel::column_ascii, 180);
         tree->setColumnWidth(BaseTraceViewModel::column_comment, 120);
         tree->setItemDelegateForColumn(BaseTraceViewModel::column_data, new DataColumnDelegate(tree));
+        tree->setItemDelegateForColumn(BaseTraceViewModel::column_ascii, new DataColumnDelegate(tree));
 
         connect(_filterModels[i], &QAbstractItemModel::rowsInserted, this, &TraceWindow::onRowsInserted);
     }
@@ -124,6 +126,7 @@ TraceWindow::TraceWindow(QWidget *parent, Backend &backend) :
 
         QTreeView *tree = trees[i];
         tree->setItemDelegateForColumn(BaseTraceViewModel::column_data, tree->itemDelegateForColumn(BaseTraceViewModel::column_data)); // reuse existing delegate
+        tree->setItemDelegateForColumn(BaseTraceViewModel::column_ascii, tree->itemDelegateForColumn(BaseTraceViewModel::column_ascii));
 
         connect(_altFilterModels[i], &QAbstractItemModel::rowsInserted, this, &TraceWindow::onRowsInserted);
     };
@@ -162,6 +165,11 @@ TraceWindow::TraceWindow(QWidget *parent, Backend &backend) :
     _scrollTimer.setInterval(100);
     _scrollTimer.setSingleShot(true);
     connect(&_scrollTimer, &QTimer::timeout, this, &TraceWindow::doScrollToBottom);
+
+    connect(ui->cbAscii, &QCheckBox::toggled, this, &TraceWindow::on_cbAscii_toggled);
+    const bool showAscii = QSettings().value("tracewindow/showAsciiColumn", true).toBool();
+    ui->cbAscii->setChecked(showAscii);
+    on_cbAscii_toggled(showAscii);
 
     setMode(defaultViewMode);
 }
@@ -220,6 +228,8 @@ void TraceWindow::setMode(TraceWindow::mode_t mode)
         }
     }
 
+    tree->setColumnHidden(BaseTraceViewModel::column_ascii, !ui->cbAscii->isChecked());
+
     for (int i = 0; i < ui->cbViewMode->count(); i++) {
         if (ui->cbViewMode->itemData(i).toInt() == mode) {
             ui->cbViewMode->setCurrentIndex(i);
@@ -240,6 +250,14 @@ void TraceWindow::on_tabs_currentChanged(int index)
             break;
         }
     }
+}
+
+void TraceWindow::on_cbAscii_toggled(bool checked)
+{
+    ui->treeAgg->setColumnHidden(BaseTraceViewModel::column_ascii, !checked);
+    ui->treeUds->setColumnHidden(BaseTraceViewModel::column_ascii, !checked);
+    ui->treeJ1939->setColumnHidden(BaseTraceViewModel::column_ascii, !checked);
+    QSettings().setValue("tracewindow/showAsciiColumn", checked);
 }
 
 
@@ -290,6 +308,7 @@ bool TraceWindow::saveXML(Backend &backend, QDomDocument &xml, QDomElement &root
     root.setAttribute("modeJ1939", _tabModes[Cat_J1939] == mode_unified ? "unified" : "aggregated");
     root.setAttribute("TimestampMode", _timestampMode);
     root.setAttribute("ActiveTab", ui->tabs->currentIndex());
+    root.setAttribute("showAscii", ui->cbAscii->isChecked() ? "1" : "0");
 
     QDomElement elAggregated = xml.createElement("AggregatedTraceView");
     elAggregated.setAttribute("SortColumn", _aggregatedProxyModel->sortColumn());
@@ -349,6 +368,9 @@ bool TraceWindow::loadXML(Backend &backend, QDomElement &el)
     setMode(_tabModes[ui->tabs->currentIndex()]);
     setTimestampMode(el.attribute("TimestampMode", "0").toInt());
     ui->tabs->setCurrentIndex(el.attribute("ActiveTab", "0").toInt());
+    if (el.hasAttribute("showAscii")) {
+        ui->cbAscii->setChecked(el.attribute("showAscii", "1") == "1");
+    }
 
     QDomElement elAggregated = el.firstChildElement("AggregatedTraceView");
     int sortColumn = elAggregated.attribute("SortColumn", "-1").toInt();
