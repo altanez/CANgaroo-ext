@@ -24,10 +24,14 @@
 #include "driver/CanDriver.h"
 #include "core/MeasurementInterface.h"
 #include "window/SetupDialog/SetupDialog.h"
+#include "driver/SLCANDriver/SLCANInterface.h"
 #include <QList>
 #include <QtAlgorithms>
 #include <algorithm>
 #include <QComboBox>
+#include <QCheckBox>
+#include <QPushButton>
+#include <QMessageBox>
 #include <QHBoxLayout>
 #include <QLabel>
 
@@ -70,6 +74,40 @@ GenericCanSetupPage::GenericCanSetupPage(QWidget *parent) :
     ui->vbOptions->addWidget(_slcanChannelRow);
     _slcanChannelRow->setVisible(false);
     connect(_cbSlcanChannel, &QComboBox::currentIndexChanged, this, [this]() { updateUI(); });
+
+    // SLCAN gateway mode controls ('G' command)
+    _slcanGatewayRow = new QWidget(this);
+    QHBoxLayout *gwRow = new QHBoxLayout(_slcanGatewayRow);
+    gwRow->setContentsMargins(0, 0, 0, 0);
+    _cbSlcanGatewayOnStop = new QCheckBox(tr("Return device to GATEWAY mode on stop ('G')"), _slcanGatewayRow);
+    _btnSlcanGateway = new QPushButton(tr("Send 'G' (GATEWAY mode)"), _slcanGatewayRow);
+    _btnSlcanGateway->setToolTip(tr("Send 'G' command now to return the device to GATEWAY mode (firmware extension)"));
+    gwRow->addWidget(_cbSlcanGatewayOnStop);
+    gwRow->addWidget(_btnSlcanGateway);
+    gwRow->addStretch();
+    ui->vbOptions->addWidget(_slcanGatewayRow);
+    _slcanGatewayRow->setVisible(false);
+
+    connect(_cbSlcanGatewayOnStop, &QCheckBox::stateChanged, this, [this]() { updateUI(); });
+    connect(_btnSlcanGateway, &QPushButton::clicked, this, [this]() {
+        if (!_mi)
+            return;
+        BusInterface *intf = backend().getInterfaceById(_mi->busInterface());
+        auto *slcan = dynamic_cast<SLCANInterface*>(intf);
+        if (slcan)
+        {
+            if (slcan->switchToGatewayMode())
+            {
+                QMessageBox::information(this, tr("SLCAN Gateway Mode"),
+                    tr("Command 'G' sent successfully to %1.\nDevice returned to GATEWAY mode.").arg(slcan->getName()));
+            }
+            else
+            {
+                QMessageBox::warning(this, tr("SLCAN Gateway Mode"),
+                    tr("Failed to send 'G' command to %1.\nCheck that the interface is not currently running.").arg(slcan->getName()));
+            }
+        }
+    });
 }
 
 GenericCanSetupPage::~GenericCanSetupPage()
@@ -116,8 +154,12 @@ void GenericCanSetupPage::onShowInterfacePage(SetupDialog &dlg, MeasurementInter
 
     const bool isSlcan = (intf->getDriver()->getName() == "SLCAN");
     _slcanChannelRow->setVisible(isSlcan);
+    _slcanGatewayRow->setVisible(isSlcan);
     if (isSlcan)
+    {
         _cbSlcanChannel->setCurrentIndex(qBound(0, _mi->slcanChannel(), 4));
+        _cbSlcanGatewayOnStop->setChecked(_mi->slcanGatewayOnStop());
+    }
 
     disenableUI(_mi->doConfigure());
     dlg.displayPage(this);
@@ -156,6 +198,7 @@ void GenericCanSetupPage::updateUI()
         _mi->setCustomFdBitrateEn(ui->cbCustomFdBitrate->isChecked());
 
         _mi->setSlcanChannel(_cbSlcanChannel->currentData().toInt());
+        _mi->setSlcanGatewayOnStop(_cbSlcanGatewayOnStop->isChecked());
 
         _enable_ui_updates = false;
 

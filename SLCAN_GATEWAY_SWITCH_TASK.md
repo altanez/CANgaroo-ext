@@ -3,7 +3,7 @@
 ## Контекст
 
 Прошивка платы WeActStudio STM32G474CEU6 (скетч `WeActStudio_G474CE_Template`,
-репозиторий `d:\!acer\!NW\WeAct474`) поддерживает два режима работы:
+репозиторий `D:\!!!upload\!work\!!!NEW\!PSS\!NW\WeAct474\WeAct474\WeActStudio_G474CE_Template`) поддерживает два режима работы:
 
 - **GATEWAY** — штатный режим шлюза. **Активен по умолчанию после reset.**
   В этом режиме устройство НЕ говорит протоколом SLCAN; COM-порт слушает

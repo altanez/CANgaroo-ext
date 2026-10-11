@@ -142,6 +142,9 @@ public:
     int slcanChannel() const;
     void setSlcanChannel(int ch);
 
+    bool slcanGatewayOnStop() const;
+    void setSlcanGatewayOnStop(bool enable);
+
     bool isResolved() const noexcept;
     void setResolved(bool resolved) noexcept;
     QString savedDriverName() const;
@@ -178,6 +181,7 @@ private:
     uint32_t _CustomFdBitrate;
 
     int _slcanChannel;   // SLCAN physical channel (P0..P4 extension), 0 default
+    bool _slcanGatewayOnStop; // Return to GATEWAY mode on stop ('G' extension)
 
     // LIN
     unsigned           _linBaudRate;
