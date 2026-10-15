@@ -3,6 +3,7 @@
 # Paths are returned as short (8.3) forward-slash paths so qmake/Make
 # need no quoting even for locations like "C:\Program Files\...".
 import ctypes
+import os
 import pybind11
 import sysconfig
 
@@ -16,7 +17,12 @@ def short_posix(p):
 
 
 libdir = sysconfig.get_config_var("LIBDIR") or ""
-libname = "python" + sysconfig.get_python_version().replace(".", "")
+version = sysconfig.get_python_version()
+# python.org installs ship pythonXY.lib, MSYS2/MinGW ships libpythonX.Y.dll.a.
+if libdir and os.path.exists(os.path.join(libdir, f"libpython{version}.dll.a")):
+    libname = "python" + version
+else:
+    libname = "python" + version.replace(".", "")
 print(";".join([
     short_posix(pybind11.get_include()),
     short_posix(sysconfig.get_paths()["include"]),

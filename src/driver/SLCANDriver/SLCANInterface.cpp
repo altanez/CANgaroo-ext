@@ -357,7 +357,7 @@ void SLCANInterface::open()
 void SLCANInterface::close()
 {
     log_info(tr("SLCAN: close() called for %1 (open=%2, portOpen=%3, offline=%4)")
-             .arg(_name).arg(_isOpen).arg(_port && _port->isOpen()).arg(_isOffline.load()));
+             .arg(_name).arg(_isOpen.load()).arg(_port && _port->isOpen()).arg(_isOffline.load()));
     _isOpen = false;
     _state  = state_bus_off;
 
